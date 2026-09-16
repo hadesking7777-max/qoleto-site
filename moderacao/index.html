@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qoleto - moderação</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/moderacao/panel.css">
+</head>
+<body>
+
+<!--
+  Painel de moderação dos cadastros (Etapa 3).
+
+  The page is public because its security does not live here: every read and
+  every verdict goes through moderation_queue() and moderate_producer(), which
+  check public.admins on the server. Someone who opens this URL without being a
+  moderator signs in and sees an empty queue and nothing else. The key below is
+  the publishable one, the same the app ships with.
+-->
+
+<main class="panel">
+  <header class="panelTop">
+    <a class="brand" href="/">Qoleto</a>
+    <span class="panelTitle">Moderação de cadastros</span>
+    <span id="who" class="muted"></span>
+    <button id="signout" class="ghost" hidden>Sair</button>
+  </header>
+
+  <section id="login" class="card login" hidden>
+    <h2>Entrar</h2>
+    <p class="muted">Acesso restrito aos moderadores do Qoleto.</p>
+    <label for="email">E-mail</label>
+    <input id="email" type="email" autocomplete="email" placeholder="voce@qoleto.com">
+    <label for="password">Senha (opcional)</label>
+    <input id="password" type="password" autocomplete="current-password" placeholder="deixe em branco para receber um link">
+    <div class="row">
+      <button id="enter" class="primary">Entrar</button>
+      <button id="magic" class="ghost">Receber link por e-mail</button>
+    </div>
+    <p id="loginMsg" class="muted"></p>
+  </section>
+
+  <section id="board" hidden>
+    <nav class="tabs">
+      <button class="tab on" data-status="pending">Na fila</button>
+      <button class="tab" data-status="approved">Aprovados</button>
+      <button class="tab" data-status="rejected">Recusados</button>
+      <button id="reload" class="ghost small">Atualizar</button>
+    </nav>
+    <p id="state" class="muted"></p>
+    <div id="list" class="list"></div>
+  </section>
+</main>
+
+<script type="module" src="/moderacao/panel.js"></script>
+</body>
+</html>
