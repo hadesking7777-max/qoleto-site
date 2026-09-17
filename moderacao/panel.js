@@ -2,6 +2,8 @@
 //
 // Everything here is a thin shell over three database functions:
 //   moderation_queue(status, limit)   the listings waiting for a verdict
+//   moderation_alerts_list(open)      what the automations flagged
+//   resolve_moderation_alert(id)      mark one alert as dealt with
 //   moderate_producer(id, action, r)  approve, or reject with a reason
 //   categories / producer_categories  what each listing says it produces
 //
@@ -90,6 +92,7 @@ async function categoryLabels() {
 async function load() {
   state.textContent = 'Carregando...';
   list.innerHTML = '';
+  if (status === 'alerts') return loadAlerts();
   const [{ data, error }] = await Promise.all([
     db.rpc('moderation_queue', { p_status: status, p_limit: 100 }),
     categoryLabels(),
@@ -173,6 +176,70 @@ function card(row, cats) {
   el.querySelector('.reject').addEventListener('click', () => {
     const reason = window.prompt('O que o produtor precisa corrigir? Esse texto aparece para ele.');
     if (reason && reason.trim()) decide('reject', reason.trim());
+  });
+
+  return el;
+}
+
+/* ------------------------------------------------------------------ alerts */
+
+async function loadAlerts() {
+  const { data, error } = await db.rpc('moderation_alerts_list', { p_open: true, p_limit: 100 });
+  if (error) { state.textContent = 'Erro ao carregar: ' + error.message; return; }
+  const rows = data ?? [];
+  if (!rows.length) { state.textContent = 'Nenhum alerta aberto.'; return; }
+  state.textContent = rows.length + ' alerta(s) aberto(s).';
+  for (const row of rows) list.appendChild(alertCard(row));
+}
+
+function alertCard(row) {
+  const el = document.createElement('article');
+  el.className = 'card listing';
+  const d = row.detail ?? {};
+  const when = row.created_at ? new Date(row.created_at).toLocaleString('pt-BR') : '';
+  const kind = row.kind === 'duplicate' ? 'Endereço duplicado'
+    : row.kind === 'photo' ? 'Foto sinalizada' : 'Alerta';
+
+  const facts = row.kind === 'duplicate'
+    ? [
+        ['Tentativa', [d.attempted_name, d.attempted_address].filter(Boolean).join(' - ') || '-'],
+        ['Já cadastrado', text(d.existing_name || row.producer_name || '-')],
+        ['Distância', d.distance_m != null ? d.distance_m + ' m' : d.reason === 'same google place' ? 'mesmo local no Google' : 'mesmo endereço'],
+        ['Quem tentou', text(d.actor_email || row.actor_email || '-')],
+        ['Coordenadas', d.attempted_lat != null ? `<a href="https://www.google.com/maps?q=${d.attempted_lat},${d.attempted_lng}" target="_blank" rel="noopener">ver no mapa</a>` : '-'],
+      ]
+    : [
+        ['Veredito', text(d.verdict || '-')],
+        ['Motivo', text((d.offending || []).join(', ') || d.reason || 'sem assunto reconhecido')],
+        ['Produtor', text(row.producer_name || '-')],
+        ['Quem enviou', text(d.actor_email || row.actor_email || '-')],
+        ['Rótulos', text((d.labels || []).map(l => l.description).join(', ') || '-')],
+      ];
+
+  el.innerHTML = `
+    <div class="listingTop">
+      <div class="listingInfo">
+        <h3>${text(kind)}</h3>
+        <p class="muted small">${text(when)}</p>
+        <dl class="facts">
+          ${facts.map(([k, v]) => `<div><dt>${text(k)}</dt><dd>${v}</dd></div>`).join('')}
+        </dl>
+      </div>
+    </div>
+    <div class="verdict">
+      <button class="primary resolve">Marcar como resolvido</button>
+      <span class="verdictMsg muted"></span>
+    </div>
+  `;
+
+  const msg = el.querySelector('.verdictMsg');
+  el.querySelector('.resolve').addEventListener('click', async () => {
+    msg.textContent = 'Enviando...';
+    const { error } = await db.rpc('resolve_moderation_alert', { p_id: row.id });
+    if (error) { msg.textContent = 'Falhou: ' + error.message; return; }
+    el.classList.add('done');
+    msg.textContent = 'Resolvido.';
+    setTimeout(() => el.remove(), 900);
   });
 
   return el;
