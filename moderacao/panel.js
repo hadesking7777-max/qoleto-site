@@ -53,7 +53,7 @@ $('enter').addEventListener('click', async () => {
   const email = $('email').value.trim();
   const password = $('password').value;
   if (!email) return say('Informe o e-mail.');
-  if (!password) return sendMagicLink(email);
+  if (!password) return sendCode(email);
   const { error } = await db.auth.signInWithPassword({ email, password });
   if (error) return say('Não consegui entrar: ' + error.message);
   paintSession();
@@ -62,17 +62,35 @@ $('enter').addEventListener('click', async () => {
 $('magic').addEventListener('click', () => {
   const email = $('email').value.trim();
   if (!email) return say('Informe o e-mail.');
-  sendMagicLink(email);
+  sendCode(email);
 });
 
-async function sendMagicLink(email) {
-  const { error } = await db.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.href },
-  });
-  say(error ? 'Não consegui enviar o link: ' + error.message
-            : 'Link enviado. Abra o e-mail neste mesmo aparelho.');
+// The project's sign-in e-mail carries a 6-digit code, not a link (the app
+// signs in with that code), so the panel asks for the code the same way. Only
+// existing accounts can ask for one here: the panel never creates users.
+async function sendCode(email) {
+  const { error } = await db.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+  if (error) return say('Não consegui enviar o código: ' + error.message);
+  $('codeStep').hidden = false;
+  $('code').value = '';
+  $('code').focus();
+  say('Código enviado para ' + email + '. Digite os números do e-mail.');
 }
+
+async function confirmCode() {
+  const email = $('email').value.trim();
+  const token = $('code').value.replace(/\D/g, '');
+  if (!email || token.length < 6) return say('Digite o código de 6 números.');
+  say('Confirmando...');
+  const { error } = await db.auth.verifyOtp({ email, token, type: 'email' });
+  if (error) return say('Código inválido ou expirado. Peça um novo.');
+  $('codeStep').hidden = true;
+  say('');
+  paintSession();
+}
+
+$('confirm').addEventListener('click', confirmCode);
+$('code').addEventListener('keydown', e => { if (e.key === 'Enter') confirmCode(); });
 
 $('signout').addEventListener('click', async () => {
   await db.auth.signOut();

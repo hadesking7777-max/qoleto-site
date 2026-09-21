@@ -37,10 +37,17 @@
     <label for="email">E-mail</label>
     <input id="email" type="email" autocomplete="email" placeholder="voce@qoleto.com">
     <label for="password">Senha (opcional)</label>
-    <input id="password" type="password" autocomplete="current-password" placeholder="deixe em branco para receber um link">
+    <input id="password" type="password" autocomplete="current-password" placeholder="deixe em branco para receber um código">
     <div class="row">
       <button id="enter" class="primary">Entrar</button>
-      <button id="magic" class="ghost">Receber link por e-mail</button>
+      <button id="magic" class="ghost">Receber código por e-mail</button>
+    </div>
+    <div id="codeStep" hidden>
+      <label for="code">Código recebido por e-mail</label>
+      <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000">
+      <div class="row">
+        <button id="confirm" class="primary">Confirmar código</button>
+      </div>
     </div>
     <p id="loginMsg" class="muted"></p>
   </section>
