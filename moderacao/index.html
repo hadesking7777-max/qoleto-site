@@ -16,9 +16,9 @@
 <!--
   Painel de moderação dos cadastros (Etapa 3).
 
-  The page is public because its security does not live here: every read and
-  every verdict goes through moderation_queue() and moderate_producer(), which
-  check public.admins on the server. Someone who opens this URL without being a
+  The page is public because its security does not live here: every read, edit
+  and verdict goes through admin_producers(), admin_update_producer(),
+  admin_bulk() and moderate_producer(), which check public.admins on the server. Someone who opens this URL without being a
   moderator signs in and sees an empty queue and nothing else. The key below is
   the publishable one, the same the app ships with.
 -->
@@ -48,14 +48,57 @@
   <section id="board" hidden>
     <nav class="tabs">
       <button class="tab on" data-status="pending">Na fila</button>
-      <button class="tab" data-status="approved">Aprovados</button>
-      <button class="tab" data-status="rejected">Recusados</button>
+      <button class="tab" data-status="all">Todos os cadastros</button>
       <button class="tab" data-status="alerts">Alertas</button>
       <button id="reload" class="ghost small">Atualizar</button>
     </nav>
+
+    <div id="tools" class="tools" hidden>
+      <input id="q" type="search" placeholder="Buscar por nome, endereço, cidade ou e-mail">
+      <select id="fStatus">
+        <option value="all">Todas as situações</option>
+        <option value="pending">Na fila</option>
+        <option value="approved">Aprovados</option>
+        <option value="rejected">Recusados</option>
+        <option value="paused">Pausados</option>
+      </select>
+      <select id="fCategory"><option value="">Todas as categorias</option></select>
+      <select id="fFlag">
+        <option value="">Todos os sinais</option>
+        <option value="duplicate">Possíveis duplicados</option>
+        <option value="photo">Fotos para conferir</option>
+        <option value="prevalidated">Encontrados no Google</option>
+        <option value="premium">Premium</option>
+      </select>
+      <button id="search" class="primary small">Buscar</button>
+    </div>
+
+    <div id="bulk" class="bulk" hidden>
+      <span id="bulkCount"></span>
+      <button class="primary small" data-bulk="approve">Aprovar</button>
+      <button class="danger small" data-bulk="reject">Recusar</button>
+      <button class="ghost small" data-bulk="pause">Pausar</button>
+      <button class="ghost small" data-bulk="unpause">Reativar</button>
+      <span id="bulkMsg" class="muted"></span>
+    </div>
+
     <p id="state" class="muted"></p>
     <div id="list" class="list"></div>
+
+    <div id="pager" class="row" hidden>
+      <button id="prev" class="ghost small">Anterior</button>
+      <button id="next" class="ghost small">Próxima</button>
+    </div>
   </section>
+
+  <dialog id="editor" class="editor">
+    <div id="editorBody"></div>
+    <div class="verdict">
+      <button id="editorSave" class="primary">Salvar</button>
+      <button id="editorCancel" class="ghost">Cancelar</button>
+      <span id="editorMsg" class="muted"></span>
+    </div>
+  </dialog>
 </main>
 
 <script type="module" src="/moderacao/panel.js"></script>
