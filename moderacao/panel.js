@@ -199,6 +199,7 @@ function card(row) {
         &middot; <a href="https://www.google.com/maps?q=${row.lat},${row.lng}" target="_blank" rel="noopener">ver no mapa</a></dd></div>
       <div><dt>WhatsApp</dt><dd>${text(row.phone_whatsapp || '-')}</dd></div>
       <div><dt>Plano</dt><dd>${row.tier === 'premium' ? 'Premium' : 'Basic'}</dd></div>
+      <div><dt>Faixa de preço</dt><dd>${row.price_level ? '€'.repeat(row.price_level) : 'não informada'}</dd></div>
     </dl>
 
     ${photos.length > 1 ? `<div class="thumbs">${photos.map(p => `<img src="${attr(p)}" alt="">`).join('')}</div>` : ''}
@@ -402,6 +403,12 @@ function openEditor(row) {
           <option value="premium"${row.tier === 'premium' ? ' selected' : ''}>Premium</option>
         </select>
       </label>
+      <label>Faixa de preço
+        <select name="price_level">
+          <option value=""${row.price_level ? '' : ' selected'}>Não informada</option>
+          ${[1, 2, 3, 4].map(n => `<option value="${n}"${row.price_level === n ? ' selected' : ''}>${'€'.repeat(n)}</option>`).join('')}
+        </select>
+      </label>
     </fieldset>
 
     <fieldset><legend>Horários</legend>
@@ -448,6 +455,8 @@ function openEditor(row) {
       .forEach(k => keep(k, row[k]));
     if (val('location_precision') !== (row.location_precision || 'exact')) patch.location_precision = val('location_precision');
     if (val('tier') !== (row.tier || 'basic')) patch.tier = val('tier');
+    // price range 1 to 4 (0030); empty clears it
+    if (val('price_level') !== String(row.price_level ?? '')) patch.price_level = val('price_level') ? Number(val('price_level')) : null;
 
     const lat = Number(val('lat')), lng = Number(val('lng'));
     if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== row.lat || lng !== row.lng)) {
