@@ -66,10 +66,16 @@ $('magic').addEventListener('click', () => {
 });
 
 // The project's sign-in e-mail carries a 6-digit code, not a link (the app
-// signs in with that code), so the panel asks for the code the same way. Only
-// existing accounts can ask for one here: the panel never creates users.
+// signs in with that code), so the panel asks for the code the same way.
+//
+// The account is created on the first code, exactly as in the app. It used to
+// be refused here, and an address that had never opened the app - which is the
+// case of the moderation address itself - got "Signups not allowed for otp"
+// and could not get in at all (client review, 22/09). Creating an account is
+// harmless: what a person may see is decided by public.admins / admin_emails
+// on the server, never by having signed in.
 async function sendCode(email) {
-  const { error } = await db.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+  const { error } = await db.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
   if (error) return say('Não consegui enviar o código: ' + error.message);
   $('codeStep').hidden = false;
   $('code').value = '';
@@ -133,7 +139,47 @@ const categoryOptions = current => categoryTree.map(s =>
     `<option value="${text(c.slug)}"${c.slug === current ? ' selected' : ''}>${text(c.name)}</option>`).join('')}</optgroup>`,
 ).join('');
 
+/* ------------------------------------------------------------- dashboard */
+
+// The six numbers that say what the day looks like, plus the two that say the
+// project is alive. Read in one call (admin_counts, 0035); a moderator who is
+// not one gets an empty object and sees nothing.
+const DASH = [
+  { key: 'pending', label: 'Esperando revisão', tone: 'warn' },
+  { key: 'approved', label: 'Aprovados' },
+  { key: 'rejected', label: 'Recusados' },
+  { key: 'paused', label: 'Pausados' },
+  { key: 'duplicates', label: 'Possíveis duplicados', tone: 'warn' },
+  { key: 'alerts', label: 'Alertas abertos', tone: 'warn' },
+  { key: 'week', label: 'Novos em 7 dias' },
+  { key: 'reviews', label: 'Avaliações' },
+];
+
+async function loadCounts() {
+  const { data, error } = await db.rpc('admin_counts');
+  if (error || !data) return;
+  // An account that is signed in but is not a moderator gets an empty answer:
+  // it should be told so, instead of staring at an empty queue.
+  if (!Object.keys(data).length) {
+    $('dash').hidden = true;
+    state.textContent = 'Esta conta está entrando, mas não é de um moderador. Peça acesso ao responsável pelo Qoleto.';
+    return;
+  }
+  const dash = $('dash');
+  dash.hidden = false;
+  dash.innerHTML = DASH.map(d => `
+    <div class="dashCard">
+      <span class="dashN ${d.tone === 'warn' && Number(data[d.key]) > 0 ? 'warnN' : ''}">${Number(data[d.key] ?? 0)}</span>
+      <span class="dashL">${d.label}</span>
+    </div>`).join('');
+  document.querySelectorAll('.tabN').forEach(el => {
+    const n = Number(data[el.dataset.count] ?? 0);
+    el.textContent = n ? String(n) : '';
+  });
+}
+
 async function load() {
+  loadCounts();
   state.textContent = 'Carregando...';
   list.innerHTML = '';
   $('tools').hidden = status !== 'all';

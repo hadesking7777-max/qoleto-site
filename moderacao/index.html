@@ -53,10 +53,13 @@
   </section>
 
   <section id="board" hidden>
+    <!-- The board a moderator lands on: the numbers first, then the work. -->
+    <section id="dash" class="dash" hidden></section>
+
     <nav class="tabs">
-      <button class="tab on" data-status="pending">Na fila</button>
-      <button class="tab" data-status="all">Todos os cadastros</button>
-      <button class="tab" data-status="alerts">Alertas</button>
+      <button class="tab on" data-status="pending">Na fila <span class="tabN" data-count="pending"></span></button>
+      <button class="tab" data-status="all">Todos os cadastros <span class="tabN" data-count="published"></span></button>
+      <button class="tab" data-status="alerts">Alertas <span class="tabN" data-count="alerts"></span></button>
       <button id="reload" class="ghost small">Atualizar</button>
     </nav>
 

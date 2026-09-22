@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qoleto</title>
+<link rel="stylesheet" href="/style.css">
+<script>
+  // A producer address typed or pasted in its short form, qoleto.com/p/<code>,
+  // is served by the real page at /p/. Everything else is an honest 404.
+  (function () {
+    var m = location.pathname.match(/^\/p\/([0-9a-fA-F]{6,32})\/?$/);
+    if (m) location.replace('/p/?c=' + m[1].toLowerCase());
+  })();
+</script>
+</head>
+<body>
+<main class="wrap home">
+  <h1>Qoleto</h1>
+  <p class="lead">Esta página não existe.</p>
+  <p class="en">This page does not exist.</p>
+  <nav class="links"><a href="/">qoleto.com</a></nav>
+</main>
+<footer class="foot">© 2026 Qoleto</footer>
+</body>
+</html>
