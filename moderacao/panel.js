@@ -9,6 +9,8 @@
 //   moderate_producer(id, action, r)     one verdict from the review queue
 //   moderation_alerts_list(open)         what the automations flagged
 //   resolve_moderation_alert(id)         mark one alert as dealt with
+//   admin_events(limit)                  every event producers announced (0037)
+//   admin_delete_event(id)               take one event down
 //
 // Redesigned on 23/09 in the client's visual direction. The calls above are
 // the same ones the panel bench exercises (tests/panel-live-tests.js).
@@ -40,6 +42,7 @@ const VIEWS = {
   queue: { hash: 'fila', eyebrow: 'Moderação', title: 'Fila de revisão', sub: 'Cada cadastro novo ou alterado espera aqui antes de aparecer no mapa.' },
   all: { hash: 'todos', eyebrow: 'Catálogo', title: 'Todos os cadastros', sub: 'Busque, filtre e ajuste vários cadastros de uma vez.' },
   alerts: { hash: 'alertas', eyebrow: 'Automações', title: 'Alertas', sub: 'O que as verificações automáticas pediram para uma pessoa olhar.' },
+  events: { hash: 'eventos', eyebrow: 'Premium', title: 'Eventos', sub: 'Feiras, degustações, colheitas e portas abertas que os produtores Premium anunciaram.' },
 };
 
 let view = 'overview';
@@ -310,6 +313,7 @@ async function load() {
   if (view === 'overview') return loadOverview();
   if (view === 'queue') return loadQueue();
   if (view === 'all') return loadAll();
+  if (view === 'events') return loadEvents();
   return loadAlerts();
 }
 
@@ -912,6 +916,76 @@ function alertCard(row) {
     el.classList.add('leaving');
     toast('Alerta resolvido.');
     setTimeout(() => { el.remove(); loadCounts(); if (!$('alertList').children.length) loadAlerts(); }, 340);
+  });
+  return el;
+}
+
+/* ------------------------------------------------------------------ events */
+
+const EVENT_KINDS = { feira: 'Feira', degustacao: 'Degustação', colheita: 'Colheita', agenda: 'Agenda aberta' };
+let eventWhen = 'upcoming';
+
+document.querySelectorAll('#eventSeg button').forEach(b => b.addEventListener('click', () => {
+  eventWhen = b.dataset.when;
+  document.querySelectorAll('#eventSeg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  loadEvents();
+}));
+
+const whenText = (a, b) => {
+  const d1 = new Date(a);
+  const d2 = new Date(b);
+  const day = d => d.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const hm = d => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return d1.toDateString() === d2.toDateString()
+    ? `${day(d1)} · ${hm(d1)} - ${hm(d2)}`
+    : `${day(d1)} ${hm(d1)} - ${day(d2)} ${hm(d2)}`;
+};
+
+async function loadEvents() {
+  $('state').textContent = 'Carregando...';
+  const { data, error } = await db.rpc('admin_events', { p_limit: 300 });
+  if (error) { $('state').textContent = 'Não consegui carregar os eventos: ' + error.message; return; }
+  const now = new Date().toISOString();
+  const rows = (data ?? [])
+    .filter(e => (eventWhen === 'upcoming' ? e.ends_at > now : e.ends_at <= now))
+    .sort((a, b) => (eventWhen === 'upcoming' ? a.starts_at.localeCompare(b.starts_at) : b.starts_at.localeCompare(a.starts_at)));
+  $('state').textContent = '';
+  const box = $('eventList');
+  box.innerHTML = rows.length ? '' : `<div class="panelBox"><div class="emptyNote"><strong>${eventWhen === 'upcoming' ? 'Nenhum evento marcado.' : 'Nenhum evento passado.'}</strong>Os eventos que os produtores Premium criam no app aparecem aqui.</div></div>`;
+  rows.forEach(r => box.appendChild(eventCard(r)));
+}
+
+function eventCard(row) {
+  const el = document.createElement('article');
+  el.className = 'alertCard';
+  el.innerHTML = `
+    <span class="alertIcon" style="background:var(--primary-soft);color:var(--primary)">${icon('calendar')}</span>
+    <div class="reviewBody" style="padding:0">
+      <div class="reviewHead">
+        <div class="chips"><span class="pill cat plain">${text(EVENT_KINDS[row.kind] || row.kind)}</span></div>
+        <h3>${text(row.title)}</h3>
+        <p class="meta"><span>${icon('clock')} ${text(whenText(row.starts_at, row.ends_at))}</span></p>
+      </div>
+      ${row.description ? `<p class="desc">${text(row.description)}</p>` : ''}
+      <dl class="facts">
+        <div><dt>Produtor</dt><dd>${text(row.producer_name || '-')}</dd></div>
+        <div><dt>Dono</dt><dd>${text(row.owner_email || '-')}</dd></div>
+        <div><dt>Criado</dt><dd>${text(ago(row.created_at))}</dd></div>
+      </dl>
+      <div class="reviewActions"><button class="btn danger remove" type="button">${icon('trash')}Remover evento</button></div>
+    </div>`;
+  el.querySelector('.remove').addEventListener('click', async () => {
+    const r = await ask({
+      title: `Remover "${row.title}"?`,
+      body: 'O evento sai do mapa e da página do produtor. O produtor continua podendo criar outros.',
+      ok: 'Remover', danger: true,
+    });
+    if (!r.ok) return;
+    const { data, error } = await db.rpc('admin_delete_event', { p_id: row.id });
+    if (error || data !== true) { toast('Não consegui remover: ' + (error?.message || 'sem permissão'), 'bad'); return; }
+    el.classList.add('leaving');
+    toast('Evento removido.');
+    setTimeout(() => { el.remove(); if (!$('eventList').children.length) loadEvents(); }, 340);
   });
   return el;
 }
