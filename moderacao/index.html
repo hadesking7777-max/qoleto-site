@@ -2,115 +2,250 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Qoleto - moderação</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Qoleto Moderação</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css">
-<link rel="stylesheet" href="/moderacao/panel.css">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="panel.css">
 </head>
 <body>
 
 <!--
-  Painel de moderação dos cadastros (Etapa 3).
+  Painel de moderação do Qoleto.
 
-  The page is public because its security does not live here: every read, edit
-  and verdict goes through admin_producers(), admin_update_producer(),
-  admin_bulk() and moderate_producer(), which check public.admins on the server. Someone who opens this URL without being a
-  moderator signs in and sees an empty queue and nothing else. The key below is
-  the publishable one, the same the app ships with.
+  The page can be public because its security does not live here: every read
+  and every change goes through database functions that check the moderator
+  list on the server (0014, 0018, 0026, 0034, 0035). Someone who is not a
+  moderator signs in and gets nothing back.
 -->
 
-<main class="panel">
-  <header class="panelTop">
-    <a class="brand" href="/">Qoleto</a>
-    <span class="panelTitle">Moderação de cadastros</span>
-    <span id="who" class="muted"></span>
-    <button id="signout" class="ghost" hidden>Sair</button>
-  </header>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-mark" viewBox="0 0 22 22" fill="none"><path d="M11 1.72C7.01 1.72 3.78 4.88 3.78 8.8C3.78 13.68 9.42 19.11 11 20.49C12.58 19.11 18.22 13.68 18.22 8.8C18.22 4.88 14.99 1.72 11 1.72Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.53 12.03C8.73 7.02 10.66 7.4 12.03 10.68" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9.63 8.8C11.42 6 13.69 5.69 15.41 7.14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5 6.2 5.8A1.5 1.5 0 0 1 7.6 4.7h8.8a1.5 1.5 0 0 1 1.4 1.1L20 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18z"/><path d="M4 13.5h4.5l1.2 2h4.6l1.2-2H20"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="2.4"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4s2-1.5 2-6.5"/><path d="M10 19.5a2.2 2.2 0 0 0 4 0"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.3-4.3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.35-5.65"/><path d="M20 4v4.5h-4.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 19.5h4l10-10a2.1 2.1 0 0 0-3-3l-10 10z"/><path d="m13.5 7.5 3 3"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 6v12M15 6v12"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+    <symbol id="i-photo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m20.5 16-4.8-4.8L7 19"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.4-6.5-11a6.5 6.5 0 0 1 13 0c0 5.6-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2.2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="m12 4 2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v4M12 16v4M4 12h4M16 12h4M6.5 6.5l2.3 2.3M15.2 15.2l2.3 2.3M17.5 6.5l-2.3 2.3M8.8 15.2l-2.3 2.3"/></symbol>
+    <symbol id="i-twins" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20s-4.5-3.8-4.5-7.7a4.5 4.5 0 0 1 9 0C13.5 16.2 9 20 9 20z"/><path d="M15 4.4a4.5 4.5 0 0 1 4.5 4.5c0 3.2-3 6.2-4 7.1"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z"/></symbol>
+    <symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2H14"/><path d="M10 12h10M16.5 8.5 20 12l-3.5 3.5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></symbol>
+  </defs>
+</svg>
 
-  <section id="login" class="card login" hidden>
-    <h2>Entrar</h2>
-    <p class="muted">Acesso restrito aos moderadores do Qoleto.</p>
-    <label for="email">E-mail</label>
-    <input id="email" type="email" autocomplete="email" placeholder="voce@qoleto.com">
-    <label for="password">Senha (opcional)</label>
-    <input id="password" type="password" autocomplete="current-password" placeholder="deixe em branco para receber um código">
-    <div class="row">
-      <button id="enter" class="primary">Entrar</button>
-      <button id="magic" class="ghost">Receber código por e-mail</button>
+<!-- ============================================================ sign in -->
+<div id="login" class="auth" hidden>
+  <div class="authArt" id="authArt">
+    <div class="authBrand"><svg width="28" height="28"><use href="#i-mark"/></svg> Qoleto</div>
+    <div>
+      <h2>Todo produtor passa por aqui antes do mapa.</h2>
+      <p>O painel onde cada cadastro é conferido, corrigido e publicado, para que o mapa mostre só quem produz de verdade.</p>
     </div>
-    <div id="codeStep" hidden>
-      <label for="code">Código recebido por e-mail</label>
-      <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000">
-      <div class="row">
-        <button id="confirm" class="primary">Confirmar código</button>
+  </div>
+  <div class="authPane">
+    <form id="authForm" class="authCard" novalidate>
+      <div>
+        <p class="eyebrow">Moderação</p>
+        <h1 id="authTitle">Entrar no painel</h1>
+      </div>
+      <p class="muted" id="authLead">Enviamos um código de 6 números para o seu e-mail. A conta é criada no primeiro acesso.</p>
+
+      <div id="stepEmail" class="field">
+        <span>E-mail</span>
+        <input id="email" class="input" type="email" autocomplete="email" placeholder="voce@qoleto.com" required>
+      </div>
+      <div id="stepPassword" class="field" hidden>
+        <span>Senha</span>
+        <input id="password" class="input" type="password" autocomplete="current-password">
+      </div>
+      <div id="stepCode" class="field" hidden>
+        <span>Código recebido por e-mail</span>
+        <input id="code" class="input codeInput" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+      </div>
+
+      <button id="authGo" class="btn primary" type="submit">Receber código</button>
+      <div class="authFoot">
+        <button id="authSwap" class="linkBtn" type="button">Tenho uma senha</button>
+        <button id="authBack" class="linkBtn" type="button" hidden>Trocar e-mail</button>
+      </div>
+      <p id="loginMsg" class="authMsg" role="status"></p>
+      <p id="demoNote" class="demoNote" hidden>Demonstração: qualquer e-mail entra, com o código 123456.</p>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================ app -->
+<div id="app" class="shell" hidden>
+  <aside class="side" aria-label="Navegação">
+    <div class="brand">
+      <svg><use href="#i-mark"/></svg>
+      <div><strong>Qoleto</strong><small>Moderação</small></div>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="navItem" data-view="overview"><svg><use href="#i-home"/></svg>Visão geral</button>
+      <button class="navItem" data-view="queue"><svg><use href="#i-inbox"/></svg>Fila de revisão<span class="navN" data-count="pending"></span></button>
+      <button class="navItem" data-view="all"><svg><use href="#i-list"/></svg>Todos os cadastros</button>
+      <button class="navItem" data-view="alerts"><svg><use href="#i-bell"/></svg>Alertas<span class="navN" data-count="alerts"></span></button>
+    </nav>
+    <p id="demoBadge" class="demoBadge" hidden>Demonstração</p>
+    <div class="sideFoot">
+      <p class="who"><strong>Conectado como</strong><span id="who"></span></p>
+      <div class="sideActions">
+        <button id="theme" class="sideBtn" type="button"><svg><use href="#i-moon"/></svg><span>Tema</span></button>
+        <button id="signout" class="sideBtn" type="button"><svg><use href="#i-out"/></svg>Sair</button>
       </div>
     </div>
-    <p id="loginMsg" class="muted"></p>
-  </section>
+  </aside>
 
-  <section id="board" hidden>
-    <!-- The board a moderator lands on: the numbers first, then the work. -->
-    <section id="dash" class="dash" hidden></section>
-
-    <nav class="tabs">
-      <button class="tab on" data-status="pending">Na fila <span class="tabN" data-count="pending"></span></button>
-      <button class="tab" data-status="all">Todos os cadastros <span class="tabN" data-count="published"></span></button>
-      <button class="tab" data-status="alerts">Alertas <span class="tabN" data-count="alerts"></span></button>
-      <button id="reload" class="ghost small">Atualizar</button>
-    </nav>
-
-    <div id="tools" class="tools" hidden>
-      <input id="q" type="search" placeholder="Buscar por nome, endereço, cidade ou e-mail">
-      <select id="fStatus">
-        <option value="all">Todas as situações</option>
-        <option value="pending">Na fila</option>
-        <option value="approved">Aprovados</option>
-        <option value="rejected">Recusados</option>
-        <option value="paused">Pausados</option>
-      </select>
-      <select id="fCategory"><option value="">Todas as categorias</option></select>
-      <select id="fFlag">
-        <option value="">Todos os sinais</option>
-        <option value="duplicate">Possíveis duplicados</option>
-        <option value="photo">Fotos para conferir</option>
-        <option value="prevalidated">Encontrados no Google</option>
-        <option value="premium">Premium</option>
-      </select>
-      <button id="search" class="primary small">Buscar</button>
+  <main class="main">
+    <div class="mobileBar">
+      <div class="brand"><svg style="color:var(--primary)"><use href="#i-mark"/></svg><div><strong>Qoleto</strong><small>Moderação</small></div></div>
+      <div class="sideActions">
+        <button id="themeM" class="iconBtn" type="button" aria-label="Trocar tema"><svg><use href="#i-moon"/></svg></button>
+        <button id="signoutM" class="iconBtn" type="button" aria-label="Sair"><svg><use href="#i-out"/></svg></button>
+      </div>
     </div>
 
-    <div id="bulk" class="bulk" hidden>
-      <span id="bulkCount"></span>
-      <button class="primary small" data-bulk="approve">Aprovar</button>
-      <button class="danger small" data-bulk="reject">Recusar</button>
-      <button class="ghost small" data-bulk="pause">Pausar</button>
-      <button class="ghost small" data-bulk="unpause">Reativar</button>
-      <span id="bulkMsg" class="muted"></span>
+    <header class="top">
+      <div>
+        <p class="eyebrow" id="viewEyebrow"></p>
+        <h1 id="viewTitle"></h1>
+        <p class="sub" id="viewSub"></p>
+      </div>
+      <div class="topTools">
+        <label class="search"><svg><use href="#i-search"/></svg><span class="srOnly">Buscar cadastros</span>
+          <input id="globalQ" type="search" placeholder="Buscar nome, cidade ou e-mail"></label>
+        <button id="reload" class="iconBtn" type="button" aria-label="Atualizar"><svg><use href="#i-refresh"/></svg></button>
+      </div>
+    </header>
+
+    <!-- visão geral -->
+    <section id="view-overview" class="view" hidden>
+      <div class="kpis" id="kpis"></div>
+      <div class="panelBox">
+        <div class="boxHead"><h2>O catálogo hoje</h2><span class="muted small" id="catalogTotal"></span></div>
+        <div class="catalogBar" id="catalogBar"></div>
+        <div class="legend" id="catalogLegend"></div>
+      </div>
+      <div class="twoCol">
+        <div class="panelBox">
+          <div class="boxHead"><h2>Esperando você</h2><button class="btn quiet sm" data-go="queue" type="button">Abrir a fila</button></div>
+          <div class="miniList" id="nextQueue"></div>
+        </div>
+        <div class="panelBox">
+          <div class="boxHead"><h2>Alertas abertos</h2><button class="btn quiet sm" data-go="alerts" type="button">Ver todos</button></div>
+          <div class="miniList" id="nextAlerts"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- fila -->
+    <section id="view-queue" class="view" hidden>
+      <p class="hint"><span><kbd>A</kbd>aprovar</span><span><kbd>R</kbd>recusar</span><span><kbd>E</kbd>editar</span><span><kbd>J</kbd><kbd>K</kbd>próximo e anterior</span></p>
+      <div class="queue" id="queue"></div>
+    </section>
+
+    <!-- todos -->
+    <section id="view-all" class="view" hidden>
+      <div class="toolbar">
+        <div class="seg" id="statusSeg" role="group" aria-label="Situação">
+          <button data-status="all" aria-pressed="true" type="button">Todos</button>
+          <button data-status="pending" aria-pressed="false" type="button">Na fila</button>
+          <button data-status="approved" aria-pressed="false" type="button">Publicados</button>
+          <button data-status="rejected" aria-pressed="false" type="button">Recusados</button>
+          <button data-status="paused" aria-pressed="false" type="button">Pausados</button>
+        </div>
+        <select id="fCategory" class="select" aria-label="Categoria"><option value="">Todas as categorias</option></select>
+        <select id="fFlag" class="select" aria-label="Sinal">
+          <option value="">Todos os sinais</option>
+          <option value="duplicate">Possíveis duplicados</option>
+          <option value="photo">Fotos para conferir</option>
+          <option value="prevalidated">Encontrados no Google</option>
+          <option value="premium">Premium</option>
+        </select>
+      </div>
+      <div id="allTable"></div>
+      <div class="pager" id="pager" hidden>
+        <span class="muted small num" id="pageInfo"></span>
+        <button id="prev" class="btn ghost sm" type="button">Anterior</button>
+        <button id="next" class="btn ghost sm" type="button">Próxima</button>
+      </div>
+    </section>
+
+    <!-- alertas -->
+    <section id="view-alerts" class="view" hidden>
+      <div class="alerts" id="alertList"></div>
+    </section>
+
+    <p id="state" class="stateLine" role="status"></p>
+  </main>
+
+  <nav class="tabbar" aria-label="Navegação">
+    <button data-view="overview" type="button"><svg><use href="#i-home"/></svg>Visão geral</button>
+    <button data-view="queue" type="button"><svg><use href="#i-inbox"/></svg>Fila<span class="navN" data-count="pending"></span></button>
+    <button data-view="all" type="button"><svg><use href="#i-list"/></svg>Todos</button>
+    <button data-view="alerts" type="button"><svg><use href="#i-bell"/></svg>Alertas<span class="navN" data-count="alerts"></span></button>
+  </nav>
+
+  <div id="bulk" class="bulkBar" hidden>
+    <strong id="bulkCount"></strong>
+    <button class="btn primary sm" data-bulk="approve" type="button"><svg><use href="#i-check"/></svg>Aprovar</button>
+    <button class="btn danger sm" data-bulk="reject" type="button"><svg><use href="#i-x"/></svg>Recusar</button>
+    <button class="btn ghost sm" data-bulk="pause" type="button"><svg><use href="#i-pause"/></svg>Pausar</button>
+    <button class="btn ghost sm" data-bulk="unpause" type="button"><svg><use href="#i-play"/></svg>Reativar</button>
+    <button class="btn quiet sm" id="bulkClear" type="button">Limpar</button>
+  </div>
+</div>
+
+<!-- ============================================================ editor -->
+<dialog id="editor" class="drawer" aria-labelledby="editorTitle">
+  <div class="sheet">
+    <div class="sheetHead">
+      <div><p class="eyebrow" id="editorEyebrow">Editar cadastro</p><h2 id="editorTitle"></h2><p class="muted small" id="editorMeta"></p></div>
+      <button id="editorClose" class="iconBtn" type="button" aria-label="Fechar"><svg><use href="#i-x"/></svg></button>
     </div>
-
-    <p id="state" class="muted"></p>
-    <div id="list" class="list"></div>
-
-    <div id="pager" class="row" hidden>
-      <button id="prev" class="ghost small">Anterior</button>
-      <button id="next" class="ghost small">Próxima</button>
+    <div class="sheetBody" id="editorBody"></div>
+    <div class="sheetFoot">
+      <span class="muted small" id="editorMsg" role="status"></span>
+      <span class="spacer"></span>
+      <button id="editorCancel" class="btn ghost" type="button">Cancelar</button>
+      <button id="editorSave" class="btn primary" type="button"><svg><use href="#i-check"/></svg>Salvar alterações</button>
     </div>
-  </section>
+  </div>
+</dialog>
 
-  <dialog id="editor" class="editor">
-    <div id="editorBody"></div>
-    <div class="verdict">
-      <button id="editorSave" class="primary">Salvar</button>
-      <button id="editorCancel" class="ghost">Cancelar</button>
-      <span id="editorMsg" class="muted"></span>
+<!-- ============================================================ confirm and reason -->
+<dialog id="modal" class="modal" aria-labelledby="modalTitle">
+  <form class="modalCard" id="modalForm" method="dialog">
+    <h2 id="modalTitle"></h2>
+    <p class="muted" id="modalText"></p>
+    <div class="reasons" id="modalReasons" hidden></div>
+    <label class="field" id="modalField" hidden><span id="modalFieldLabel">Motivo</span>
+      <textarea id="modalInput" class="textarea" rows="3"></textarea></label>
+    <div class="modalActions">
+      <button id="modalCancel" class="btn ghost" type="button">Cancelar</button>
+      <button id="modalOk" class="btn primary" type="submit">Confirmar</button>
     </div>
-  </dialog>
-</main>
+  </form>
+</dialog>
 
-<script type="module" src="/moderacao/panel.js"></script>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script type="module" src="panel.js"></script>
 </body>
 </html>
