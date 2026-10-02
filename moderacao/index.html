@@ -46,6 +46,7 @@
     <symbol id="i-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2H14"/><path d="M10 12h10M16.5 8.5 20 12l-3.5 3.5"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5.5" width="16" height="14.5" rx="2.2"/><path d="M4 10h16M8.5 3.5v3.5M15.5 3.5v3.5"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></symbol>
+    <symbol id="i-team" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c.4-3 2.6-4.8 5.5-4.8s5.1 1.8 5.5 4.8"/><path d="M15.5 6.2a3 3 0 0 1 0 5.6M17.5 14.6c1.7.7 2.7 2.2 3 4.4"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></symbol>
   </defs>
 </svg>
@@ -104,10 +105,11 @@
       <button class="navItem" data-view="all"><svg><use href="#i-list"/></svg>Todos os cadastros</button>
       <button class="navItem" data-view="alerts"><svg><use href="#i-bell"/></svg>Alertas<span class="navN" data-count="alerts"></span></button>
       <button class="navItem" data-view="events"><svg><use href="#i-calendar"/></svg>Eventos</button>
+      <button class="navItem ownerOnly" data-view="team" hidden><svg><use href="#i-team"/></svg>Equipe</button>
     </nav>
     <p id="demoBadge" class="demoBadge" hidden>Demonstração</p>
     <div class="sideFoot">
-      <p class="who"><strong>Conectado como</strong><span id="who"></span></p>
+      <p class="who"><strong>Conectado como</strong><span id="who"></span><span id="role" class="roleTag" hidden></span></p>
       <div class="sideActions">
         <button id="theme" class="sideBtn" type="button"><svg><use href="#i-moon"/></svg><span>Tema</span></button>
         <button id="signout" class="sideBtn" type="button"><svg><use href="#i-out"/></svg>Sair</button>
@@ -199,6 +201,19 @@
       <div class="alerts" id="eventList"></div>
     </section>
 
+    <!-- equipe (so o admin_owner) -->
+    <section id="view-team" class="view" hidden>
+      <div class="panelBox">
+        <form id="teamForm" class="teamForm">
+          <label class="field"><span>E-mail</span><input class="input" id="teamEmail" type="email" placeholder="pessoa@qoleto.com" autocomplete="off" required></label>
+          <label class="field"><span>Perfil</span><select class="select" id="teamRole"><option value="moderator">admin_moderator</option><option value="owner">admin_owner</option></select></label>
+          <button class="btn primary" type="submit">Adicionar</button>
+        </form>
+        <p class="muted small">admin_owner: concede planos, vê o histórico de licenças e gerencia a equipe. admin_moderator: aprova, recusa, edita cadastros e remove eventos, sem acesso a planos nem a dados financeiros.</p>
+        <div id="teamList" class="teamList"></div>
+      </div>
+    </section>
+
     <!-- alertas -->
     <section id="view-alerts" class="view" hidden>
       <div class="alerts" id="alertList"></div>
@@ -213,6 +228,7 @@
     <button data-view="all" type="button"><svg><use href="#i-list"/></svg>Todos</button>
     <button data-view="alerts" type="button"><svg><use href="#i-bell"/></svg>Alertas<span class="navN" data-count="alerts"></span></button>
     <button data-view="events" type="button"><svg><use href="#i-calendar"/></svg>Eventos</button>
+    <button class="ownerOnly" data-view="team" type="button" hidden><svg><use href="#i-team"/></svg>Equipe</button>
   </nav>
 
   <div id="bulk" class="bulkBar" hidden>

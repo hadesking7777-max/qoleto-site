@@ -5,6 +5,9 @@
 //   admin_counts()                       the numbers the board opens on
 //   admin_producers(search, status, category, flag, limit, offset)
 //   admin_update_producer(id, patch)     edit any field of any listing
+//   admin_my_role()                      'owner' or 'moderator' (0039)
+//   admin_producer_plan / admin_grant_plan   the plan of a listing, granted by an owner
+//   admin_team / admin_set_team_member / admin_remove_team_member   the team, owner only
 //   admin_bulk(ids, action, reason)      approve, reject, pause, reactivate many
 //   moderate_producer(id, action, r)     one verdict from the review queue
 //   moderation_alerts_list(open)         what the automations flagged
@@ -42,7 +45,8 @@ const VIEWS = {
   queue: { hash: 'fila', eyebrow: 'Moderação', title: 'Fila de revisão', sub: 'Cada cadastro novo ou alterado espera aqui antes de aparecer no mapa.' },
   all: { hash: 'todos', eyebrow: 'Catálogo', title: 'Todos os cadastros', sub: 'Busque, filtre e ajuste vários cadastros de uma vez.' },
   alerts: { hash: 'alertas', eyebrow: 'Automações', title: 'Alertas', sub: 'O que as verificações automáticas pediram para uma pessoa olhar.' },
-  events: { hash: 'eventos', eyebrow: 'Premium', title: 'Eventos', sub: 'Feiras, degustações, colheitas e portas abertas que os produtores Premium anunciaram.' },
+  events: { hash: 'eventos', eyebrow: 'Agenda', title: 'Eventos', sub: 'Feiras, degustações, colheitas e portas abertas que os produtores anunciaram, com o formato e o plano de cada um.' },
+  team: { hash: 'equipe', eyebrow: 'Acesso', title: 'Equipe', sub: 'Quem modera o Qoleto e em qual nível.' },
 };
 
 let view = 'overview';
@@ -52,6 +56,14 @@ let rowsOnScreen = [];
 let queueRows = [];
 let focusIdx = 0;
 let isModerator = true;
+// 'owner' or 'moderator' (0039): only an owner grants plans and manages the
+// team; the server enforces it, the panel only shows what each level can do
+let role = null;
+const isOwner = () => role === 'owner';
+const PLANS = { free: 'Free', premium_a: 'Premium A', premium_b: 'Premium B', premium_c: 'Premium C' };
+const PLAN_TERMS = [['1', '1 mês'], ['3', '3 meses'], ['6', '6 meses'], ['12', '1 ano'], ['', 'Vitalício']];
+const EVENT_FORMATS = { local: 'No local', agendamento: 'Por agendamento', envio: 'Envio' };
+const dateText = iso => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const selected = new Set();
 const categoryNames = new Map();
 let categoryTree = [];
@@ -290,7 +302,7 @@ function setView(v) {
   document.querySelectorAll('[data-view]').forEach(b => {
     if (b.dataset.view === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
-  Object.keys(VIEWS).forEach(k => { $(`view-${k}`).hidden = k !== v || !isModerator; });
+  Object.keys(VIEWS).forEach(k => { $(`view-${k}`).hidden = k !== v || !isModerator || (k === 'team' && !isOwner()); });
   $('viewEyebrow').textContent = meta.eyebrow;
   $('viewTitle').textContent = meta.title;
   $('viewSub').textContent = meta.sub;
@@ -314,6 +326,7 @@ async function load() {
   if (view === 'queue') return loadQueue();
   if (view === 'all') return loadAll();
   if (view === 'events') return loadEvents();
+  if (view === 'team') return loadTeam();
   return loadAlerts();
 }
 
@@ -358,11 +371,23 @@ async function loadCounts() {
   // "paused" on the server counts only the producer's own pause; a listing
   // is on the map when approved and paused by nobody, so the gap between the
   // two is everything approved but off the map, whoever paused it.
+  await loadRole();
   counts = { ...data, offMap: Math.max(0, Number(data.approved ?? 0) - Number(data.published ?? 0)) };
   document.querySelectorAll('.navN').forEach(el => {
     const n = Number(data[el.dataset.count] ?? 0);
     el.textContent = n ? String(n) : '';
   });
+}
+
+async function loadRole() {
+  const { data, error } = await db.rpc('admin_my_role');
+  role = error ? 'moderator' : (data || 'moderator');
+  $('role').hidden = false;
+  $('role').textContent = isOwner() ? 'admin_owner' : 'admin_moderator';
+  document.querySelectorAll('.ownerOnly').forEach(el => { el.hidden = !isOwner(); });
+  // the team view opened from the address bar waits for the level to be known
+  $('view-team').hidden = !(view === 'team' && isOwner());
+  if (view === 'team' && !isOwner()) setView('overview');
 }
 
 const KPIS = [
@@ -755,15 +780,11 @@ function openEditor(row) {
 
     <section class="section"><h3>Contato e plano</h3>
       ${field('phone_whatsapp', 'WhatsApp', row.phone_whatsapp)}
-      <div class="two">
-        <label class="field"><span>Plano</span><select class="select" name="tier">
-          <option value="basic"${row.tier !== 'premium' ? ' selected' : ''}>Basic</option>
-          <option value="premium"${row.tier === 'premium' ? ' selected' : ''}>Premium</option></select></label>
-        <label class="field"><span>Faixa de preço</span><select class="select" name="price_level">
-          <option value=""${row.price_level ? '' : ' selected'}>Não informada</option>
-          ${[1, 2, 3, 4].map(n => `<option value="${n}"${row.price_level === n ? ' selected' : ''}>${'$'.repeat(n)}</option>`).join('')}
-        </select></label>
-      </div>
+      <label class="field"><span>Faixa de preço</span><select class="select" name="price_level">
+        <option value=""${row.price_level ? '' : ' selected'}>Não informada</option>
+        ${[1, 2, 3, 4].map(n => `<option value="${n}"${row.price_level === n ? ' selected' : ''}>${'$'.repeat(n)}</option>`).join('')}
+      </select></label>
+      <div class="planBox" id="planBox"><p class="muted small">Carregando o plano...</p></div>
     </section>
 
     <section class="section"><h3>Horários</h3>
@@ -812,6 +833,7 @@ function openEditor(row) {
     }));
   };
   paintPhotos();
+  paintPlan(row);
 
   dlg.showModal();
   body.scrollTop = 0;
@@ -823,7 +845,6 @@ function openEditor(row) {
     ['name', 'owners', 'tagline', 'description', 'address', 'address_complement', 'neighbourhood', 'city', 'phone_whatsapp']
       .forEach(k => change(k, row[k]));
     if (val('location_precision') !== (row.location_precision || 'exact')) patch.location_precision = val('location_precision');
-    if (val('tier') !== (row.tier || 'basic')) patch.tier = val('tier');
     if (val('price_level') !== String(row.price_level ?? '')) patch.price_level = val('price_level') ? Number(val('price_level')) : null;
 
     const lat = Number(val('lat'));
@@ -860,6 +881,54 @@ function openEditor(row) {
     toast('Alterações salvas.');
     load();
   };
+}
+
+/* The plan of a listing, inside the editor. Everyone who moderates sees which
+   plan it is on; an admin_owner also grants one, for a term or for life, and
+   sees every grant made before. The change is saved at once, on its own
+   button: it does not wait for "Salvar". */
+async function paintPlan(row) {
+  const box = $('planBox');
+  if (!box) return;
+  const { data, error } = await db.rpc('admin_producer_plan', { p_id: row.id });
+  if (error || !data) { box.innerHTML = '<p class="muted small">Não consegui ler o plano deste cadastro.</p>'; return; }
+  const until = data.plan === 'free' ? '' : (data.plan_expires_at ? `vence em ${text(dateText(data.plan_expires_at))}` : 'sem vencimento');
+  const limits = `${data.events_per_month} ${data.events_per_month === 1 ? 'evento' : 'eventos'} por mês · ${data.max_categories} ${data.max_categories === 1 ? 'categoria' : 'categorias'}`;
+  const now = `<div class="planNow"><span>Plano atual:</span><strong>${text(PLANS[data.plan] || data.plan)}</strong>${until ? `<span class="pill brass plain">${until}</span>` : ''}<span class="muted small">${limits}</span></div>`;
+  if (!data.can_grant) {
+    box.innerHTML = now + '<p class="muted small">Só um admin_owner concede ou altera planos.</p>';
+    return;
+  }
+  const history = (data.grants ?? []).map(g => `<li><b>${text(PLANS[g.plan] || g.plan)}</b><span>${g.plan === 'free' ? 'plano retirado' : (g.months ? `${g.months} ${g.months === 1 ? 'mês' : 'meses'}` : 'vitalício')}</span><span>${text(dateText(g.created_at))}</span><span>${text(g.granted_email || '')}</span>${g.note ? `<span>${text(g.note)}</span>` : ''}</li>`).join('');
+  box.innerHTML = `${now}
+    <div class="planGrant">
+      <label class="field"><span>Conceder plano</span><select class="select" id="grantPlan">${Object.entries(PLANS).map(([k, v]) => `<option value="${k}"${k === data.plan ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+      <label class="field"><span>Prazo</span><select class="select" id="grantTerm">${PLAN_TERMS.map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
+      <label class="field wide"><span>Observação (opcional)</span><input class="input" id="grantNote" maxlength="300" placeholder="Ex.: parceiro estratégico, teste interno"></label>
+      <button class="btn primary wide" id="grantGo" type="button">Conceder plano</button>
+    </div>
+    ${history ? `<ul class="planHistory" aria-label="Licenças concedidas">${history}</ul>` : '<p class="muted small">Nenhuma licença concedida por aqui ainda.</p>'}`;
+  const term = $('grantTerm');
+  const syncTerm = () => { term.disabled = $('grantPlan').value === 'free'; };
+  $('grantPlan').addEventListener('change', syncTerm);
+  syncTerm();
+  $('grantGo').addEventListener('click', async () => {
+    const plan = $('grantPlan').value;
+    const months = plan === 'free' || !term.value ? null : Number(term.value);
+    $('grantGo').disabled = true;
+    const { error: e } = await db.rpc('admin_grant_plan', {
+      p_producer: row.id, p_plan: plan, p_months: months, p_note: $('grantNote').value.trim() || null,
+    });
+    if (e) {
+      $('grantGo').disabled = false;
+      toast('Não consegui conceder: ' + (e.message.includes('owner_only') ? 'só um admin_owner altera planos.' : e.message), 'bad');
+      return;
+    }
+    row.tier = plan === 'free' ? 'basic' : 'premium';
+    toast(plan === 'free' ? 'Plano retirado: o cadastro voltou para Free.' : `${PLANS[plan]} concedido.`);
+    paintPlan(row);
+    load();
+  });
 }
 
 $('editorCancel').addEventListener('click', () => $('editor').close());
@@ -951,7 +1020,7 @@ async function loadEvents() {
     .sort((a, b) => (eventWhen === 'upcoming' ? a.starts_at.localeCompare(b.starts_at) : b.starts_at.localeCompare(a.starts_at)));
   $('state').textContent = '';
   const box = $('eventList');
-  box.innerHTML = rows.length ? '' : `<div class="panelBox"><div class="emptyNote"><strong>${eventWhen === 'upcoming' ? 'Nenhum evento marcado.' : 'Nenhum evento passado.'}</strong>Os eventos que os produtores Premium criam no app aparecem aqui.</div></div>`;
+  box.innerHTML = rows.length ? '' : `<div class="panelBox"><div class="emptyNote"><strong>${eventWhen === 'upcoming' ? 'Nenhum evento marcado.' : 'Nenhum evento passado.'}</strong>Os eventos que os produtores criam no app aparecem aqui.</div></div>`;
   rows.forEach(r => box.appendChild(eventCard(r)));
 }
 
@@ -962,7 +1031,7 @@ function eventCard(row) {
     <span class="alertIcon" style="background:var(--primary-soft);color:var(--primary)">${icon('calendar')}</span>
     <div class="reviewBody" style="padding:0">
       <div class="reviewHead">
-        <div class="chips"><span class="pill cat plain">${text(EVENT_KINDS[row.kind] || row.kind)}</span></div>
+        <div class="chips"><span class="pill cat plain">${text(EVENT_KINDS[row.kind] || row.kind)}</span><span class="pill plain">${text(EVENT_FORMATS[row.format] || 'No local')}</span>${row.sold_out ? '<span class="pill bad plain">Esgotado</span>' : ''}</div>
         <h3>${text(row.title)}</h3>
         <p class="meta"><span>${icon('clock')} ${text(whenText(row.starts_at, row.ends_at))}</span></p>
       </div>
@@ -970,6 +1039,7 @@ function eventCard(row) {
       <dl class="facts">
         <div><dt>Produtor</dt><dd>${text(row.producer_name || '-')}</dd></div>
         <div><dt>Dono</dt><dd>${text(row.owner_email || '-')}</dd></div>
+        <div><dt>Plano</dt><dd>${text(PLANS[row.plan] || '-')}</dd></div>
         <div><dt>Criado</dt><dd>${text(ago(row.created_at))}</dd></div>
       </dl>
       <div class="reviewActions"><button class="btn danger remove" type="button">${icon('trash')}Remover evento</button></div>
@@ -989,6 +1059,57 @@ function eventCard(row) {
   });
   return el;
 }
+
+/* ------------------------------------------------------------------ team */
+
+async function loadTeam() {
+  if (!isOwner()) return;
+  $('state').textContent = 'Carregando...';
+  const { data, error } = await db.rpc('admin_team');
+  if (error) { $('state').textContent = 'Não consegui carregar a equipe: ' + error.message; return; }
+  $('state').textContent = '';
+  const box = $('teamList');
+  box.innerHTML = '';
+  (data ?? []).forEach(m => {
+    const el = document.createElement('div');
+    el.className = 'teamRow';
+    el.innerHTML = `<span class="mail">${text(m.email)}</span>
+      <select class="select" aria-label="Perfil de ${text(m.email)}" style="width:auto">
+        <option value="owner"${m.role === 'owner' ? ' selected' : ''}>admin_owner</option>
+        <option value="moderator"${m.role !== 'owner' ? ' selected' : ''}>admin_moderator</option>
+      </select>
+      <button class="btn danger sm" type="button">Remover</button>`;
+    el.querySelector('select').addEventListener('change', async ev => {
+      const { error: e } = await db.rpc('admin_set_team_member', { p_email: m.email, p_role: ev.target.value });
+      if (e) toast(teamError(e), 'bad'); else toast('Perfil atualizado.');
+      loadTeam();
+    });
+    el.querySelector('button').addEventListener('click', async () => {
+      const r = await ask({ title: `Remover ${m.email}?`, body: 'A pessoa perde o acesso ao painel na hora.', ok: 'Remover', danger: true });
+      if (!r.ok) return;
+      const { error: e } = await db.rpc('admin_remove_team_member', { p_email: m.email });
+      if (e) toast(teamError(e), 'bad'); else toast('Removido da equipe.');
+      loadTeam();
+    });
+    box.appendChild(el);
+  });
+}
+
+const teamError = e => (e.message.includes('last_owner') ? 'É o único admin_owner: nomeie outro antes.'
+  : e.message.includes('bad_email') ? 'Confira o e-mail.'
+    : e.message.includes('owner_only') ? 'Só um admin_owner gerencia a equipe.'
+      : 'Não consegui salvar: ' + e.message);
+
+$('teamForm').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const email = $('teamEmail').value.trim();
+  if (!email) return;
+  const { error } = await db.rpc('admin_set_team_member', { p_email: email, p_role: $('teamRole').value });
+  if (error) { toast(teamError(error), 'bad'); return; }
+  $('teamEmail').value = '';
+  toast('Adicionado à equipe.');
+  loadTeam();
+});
 
 /* ------------------------------------------------------------------ start */
 
