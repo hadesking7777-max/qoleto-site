@@ -19,7 +19,7 @@ const $ = id => document.getElementById(id);
 const T = {
   pt: {
     loading: 'Abrindo...', gone: 'Este produtor não está disponível.',
-    home: 'Ver o Qoleto', open: 'Aberto agora', closed: 'Fechado agora',
+    home: 'Ver o Qoleto', open: 'Aberto agora', closed: 'Fechado agora', paused: 'Vendas pausadas',
     app: 'Abrir no app', whats: 'Falar no WhatsApp', route: 'Como chegar',
     soon: 'Qoleto: o mapa dos pequenos produtores artesanais e familiares. Em breve na App Store e no Google Play.',
     reviews: n => `${n} ${n === 1 ? 'avaliação' : 'avaliações'}`,
@@ -27,7 +27,7 @@ const T = {
   },
   en: {
     loading: 'Opening...', gone: 'This producer is not available.',
-    home: 'See Qoleto', open: 'Open now', closed: 'Closed now',
+    home: 'See Qoleto', open: 'Open now', closed: 'Closed now', paused: 'Sales paused',
     app: 'Open in the app', whats: 'Message on WhatsApp', route: 'Directions',
     soon: 'Qoleto: the map of small artisanal and family producers. Coming soon to the App Store and Google Play.',
     reviews: n => `${n} ${n === 1 ? 'review' : 'reviews'}`,
@@ -35,7 +35,7 @@ const T = {
   },
   es: {
     loading: 'Abriendo...', gone: 'Este productor no está disponible.',
-    home: 'Ver Qoleto', open: 'Abierto ahora', closed: 'Cerrado ahora',
+    home: 'Ver Qoleto', open: 'Abierto ahora', closed: 'Cerrado ahora', paused: 'Ventas en pausa',
     app: 'Abrir en la app', whats: 'Escribir por WhatsApp', route: 'Cómo llegar',
     soon: 'Qoleto: el mapa de los pequeños productores artesanales y familiares. Pronto en App Store y Google Play.',
     reviews: n => `${n} ${n === 1 ? 'reseña' : 'reseñas'}`,
@@ -43,7 +43,7 @@ const T = {
   },
   fr: {
     loading: 'Ouverture...', gone: 'Ce producteur n’est pas disponible.',
-    home: 'Voir Qoleto', open: 'Ouvert maintenant', closed: 'Fermé maintenant',
+    home: 'Voir Qoleto', open: 'Ouvert maintenant', closed: 'Fermé maintenant', paused: 'Ventes en pause',
     app: 'Ouvrir dans l’app', whats: 'Écrire sur WhatsApp', route: 'Itinéraire',
     soon: 'Qoleto : la carte des petits producteurs artisanaux et familiaux. Bientôt sur l’App Store et Google Play.',
     reviews: n => `${n} ${n === 1 ? 'avis' : 'avis'}`,
@@ -51,7 +51,7 @@ const T = {
   },
   it: {
     loading: 'Apertura...', gone: 'Questo produttore non è disponibile.',
-    home: 'Vedi Qoleto', open: 'Aperto ora', closed: 'Chiuso ora',
+    home: 'Vedi Qoleto', open: 'Aperto ora', closed: 'Chiuso ora', paused: 'Vendite in pausa',
     app: 'Apri nell’app', whats: 'Scrivi su WhatsApp', route: 'Indicazioni',
     soon: 'Qoleto: la mappa dei piccoli produttori artigianali e familiari. Presto su App Store e Google Play.',
     reviews: n => `${n} ${n === 1 ? 'recensione' : 'recensioni'}`,
@@ -90,7 +90,10 @@ function render(p) {
 
   const chips = [];
   if (p.category && p.category.name) chips.push(`<span class="pchip">${esc(p.category.name)}</span>`);
-  if (p.is_open !== null && p.is_open !== undefined) {
+  // a listing its owner paused keeps its page and says so (0038)
+  if (p.paused) {
+    chips.push(`<span class="pchip off">${t.paused}</span>`);
+  } else if (p.is_open !== null && p.is_open !== undefined) {
     chips.push(`<span class="pchip ${p.is_open ? 'on' : 'off'}">${p.is_open ? t.open : t.closed}</span>`);
   }
   if (p.price_level) chips.push(`<span class="pchip">${'$'.repeat(p.price_level)}</span>`);
