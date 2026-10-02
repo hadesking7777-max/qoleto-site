@@ -60,7 +60,8 @@ let isModerator = true;
 // team; the server enforces it, the panel only shows what each level can do
 let role = null;
 const isOwner = () => role === 'owner';
-const PLANS = { free: 'Free', premium_a: 'Premium A', premium_b: 'Premium B', premium_c: 'Premium C' };
+// the commercial names (client, 03/10); the keys are the ones in the base
+const PLANS = { free: 'Basic', premium_a: 'Essencial', premium_b: 'Origem', premium_c: 'Maestro' };
 const PLAN_TERMS = [['1', '1 mês'], ['3', '3 meses'], ['6', '6 meses'], ['12', '1 ano'], ['', 'Vitalício']];
 const EVENT_FORMATS = { local: 'No local', agendamento: 'Por agendamento', envio: 'Envio' };
 const dateText = iso => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -893,7 +894,7 @@ async function paintPlan(row) {
   const { data, error } = await db.rpc('admin_producer_plan', { p_id: row.id });
   if (error || !data) { box.innerHTML = '<p class="muted small">Não consegui ler o plano deste cadastro.</p>'; return; }
   const until = data.plan === 'free' ? '' : (data.plan_expires_at ? `vence em ${text(dateText(data.plan_expires_at))}` : 'sem vencimento');
-  const limits = `${data.events_per_month} ${data.events_per_month === 1 ? 'evento' : 'eventos'} por mês · ${data.max_categories} ${data.max_categories === 1 ? 'categoria' : 'categorias'}`;
+  const limits = `${data.event_days_per_month} ${data.event_days_per_month === 1 ? 'dia' : 'dias'} de evento por mês · ${data.max_categories} ${data.max_categories === 1 ? 'categoria' : 'categorias'}`;
   const now = `<div class="planNow"><span>Plano atual:</span><strong>${text(PLANS[data.plan] || data.plan)}</strong>${until ? `<span class="pill brass plain">${until}</span>` : ''}<span class="muted small">${limits}</span></div>`;
   if (!data.can_grant) {
     box.innerHTML = now + '<p class="muted small">Só um admin_owner concede ou altera planos.</p>';
@@ -902,7 +903,7 @@ async function paintPlan(row) {
   const history = (data.grants ?? []).map(g => `<li><b>${text(PLANS[g.plan] || g.plan)}</b><span>${g.plan === 'free' ? 'plano retirado' : (g.months ? `${g.months} ${g.months === 1 ? 'mês' : 'meses'}` : 'vitalício')}</span><span>${text(dateText(g.created_at))}</span><span>${text(g.granted_email || '')}</span>${g.note ? `<span>${text(g.note)}</span>` : ''}</li>`).join('');
   box.innerHTML = `${now}
     <div class="planGrant">
-      <label class="field"><span>Conceder plano</span><select class="select" id="grantPlan">${Object.entries(PLANS).map(([k, v]) => `<option value="${k}"${k === data.plan ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+      <label class="field"><span>Conceder plano</span><select class="select" id="grantPlan">${Object.entries(PLANS).map(([k, v]) => `<option value="${k}"${k === data.plan ? ' selected' : ''}>${v} (${k})</option>`).join('')}</select></label>
       <label class="field"><span>Prazo</span><select class="select" id="grantTerm">${PLAN_TERMS.map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
       <label class="field wide"><span>Observação (opcional)</span><input class="input" id="grantNote" maxlength="300" placeholder="Ex.: parceiro estratégico, teste interno"></label>
       <button class="btn primary wide" id="grantGo" type="button">Conceder plano</button>
@@ -925,7 +926,7 @@ async function paintPlan(row) {
       return;
     }
     row.tier = plan === 'free' ? 'basic' : 'premium';
-    toast(plan === 'free' ? 'Plano retirado: o cadastro voltou para Free.' : `${PLANS[plan]} concedido.`);
+    toast(plan === 'free' ? 'Plano retirado: o cadastro voltou para Basic.' : `Plano ${PLANS[plan]} concedido.`);
     paintPlan(row);
     load();
   });
