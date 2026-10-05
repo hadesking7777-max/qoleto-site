@@ -61,9 +61,9 @@ let isModerator = true;
 let role = null;
 const isOwner = () => role === 'owner';
 // the commercial names (client, 03/10); the keys are the ones in the base
-const PLANS = { free: 'Basic', premium_a: 'Essencial', premium_b: 'Origem', premium_c: 'Maestro' };
+const PLANS = { free: 'Qoleto Basic', premium_a: 'Qoleto+ Essencial', premium_b: 'Qoleto+ Origem', premium_c: 'Qoleto+ Maestro' };
 const PLAN_TERMS = [['1', '1 mês'], ['3', '3 meses'], ['6', '6 meses'], ['12', '1 ano'], ['', 'Vitalício']];
-const EVENT_FORMATS = { local: 'No local', agendamento: 'Por agendamento', envio: 'Envio' };
+const EVENT_FORMATS = { local: 'Portas abertas', agendamento: 'Com agendamento', envio: 'Envio de lote' };
 const dateText = iso => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const selected = new Set();
 const categoryNames = new Map();
@@ -113,7 +113,7 @@ function signals(r, short = false) {
   }
   const flagged = Object.values(r.photo_check ?? {}).filter(v => v && v.verdict === 'flagged').length;
   if (flagged) out.push(`<span class="pill warn">${flagged === 1 ? '1 foto' : flagged + ' fotos'} para conferir</span>`);
-  if (short && r.tier === 'premium') out.push('<span class="pill brass plain">Premium</span>');
+  if (short && r.tier === 'premium') out.push('<span class="pill brass plain">Qoleto+</span>');
   if (r.prevalidated) out.push('<span class="pill good">Encontrado no Google</span>');
   if (r.admin_paused) out.push('<span class="pill">Pausado pela moderação</span>');
   else if (r.owner_paused) out.push('<span class="pill">Pausado pelo produtor</span>');
@@ -516,7 +516,7 @@ function reviewCard(row) {
   el.innerHTML = `
     <div class="reviewMedia">
       ${cover ? `<img class="mainImg" src="${attr(cover)}" alt="Foto de capa de ${text(row.name)}">` : ''}
-      ${row.tier === 'premium' ? '<span class="tierTag">Premium</span>' : ''}
+      ${row.tier === 'premium' ? '<span class="tierTag">Qoleto+</span>' : ''}
       ${photos.length ? `<span class="mediaCount">${icon('photo')}${photos.length} ${photos.length === 1 ? 'foto' : 'fotos'}</span>` : ''}
     </div>
     <div class="reviewBody">
@@ -992,7 +992,7 @@ function alertCard(row) {
 
 /* ------------------------------------------------------------------ events */
 
-const EVENT_KINDS = { feira: 'Feira', degustacao: 'Degustação', colheita: 'Colheita', agenda: 'Agenda aberta' };
+const EVENT_KINDS = { venda_direta: 'Venda direta', degustacao: 'Degustação', colheita: 'Colheita', visita_aberta: 'Visita aberta', oficina: 'Oficina prática' };
 let eventWhen = 'upcoming';
 
 document.querySelectorAll('#eventSeg button').forEach(b => b.addEventListener('click', () => {
@@ -1041,6 +1041,7 @@ function eventCard(row) {
         <div><dt>Produtor</dt><dd>${text(row.producer_name || '-')}</dd></div>
         <div><dt>Dono</dt><dd>${text(row.owner_email || '-')}</dd></div>
         <div><dt>Plano</dt><dd>${text(PLANS[row.plan] || '-')}</dd></div>
+        <div><dt>Capacidade</dt><dd>${text(row.capacity == null ? (row.capacity_kind === 'produtos' ? 'Unidades ilimitadas' : 'Vagas ilimitadas') : row.capacity + (row.capacity_kind === 'produtos' ? ' unidades' : ' vagas'))}</dd></div>
         <div><dt>Criado</dt><dd>${text(ago(row.created_at))}</dd></div>
       </dl>
       <div class="reviewActions"><button class="btn danger remove" type="button">${icon('trash')}Remover evento</button></div>
