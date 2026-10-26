@@ -497,6 +497,84 @@ async function withActivation(rows) {
   return rows.map(r => ({ ...r, act: byId.get(r.id) || null }));
 }
 
+/*
+ * Changes of listings already on the map (0058): a big edit (name, address,
+ * story rewritten, most photos replaced) waits here while the approved
+ * version stays live. Each shows what changed, field by field.
+ */
+const CHANGE_LABELS = {
+  name: 'Nome', owners: 'Quem está por trás', tagline: 'Slogan', description: 'Descrição',
+  address: 'Endereço', address_complement: 'Complemento', city: 'Cidade', neighbourhood: 'Bairro',
+  location: 'Pino no mapa', phone_whatsapp: 'WhatsApp', cover_url: 'Capa', photos: 'Fotos',
+  known_for: 'Conhecidos por', menu_photo_url: 'Tabela de preços',
+};
+const changeValue = (k, v) => {
+  if (v == null || v === '') return '<em>vazio</em>';
+  if (k === 'cover_url' || k === 'menu_photo_url') return `<img class="changeImg" src="${attr(v)}" alt="">`;
+  if (k === 'photos') return (v || []).map(u => `<img class="changeImg" src="${attr(u)}" alt="">`).join('') || '<em>nenhuma</em>';
+  if (k === 'location') return 'posição alterada';
+  if (Array.isArray(v)) return text(v.join(', '));
+  return text(String(v));
+};
+async function paintPendingChanges(box) {
+  const { data, error } = await db.rpc('admin_pending_changes');
+  if (error || !data?.length) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'panelBox changes';
+  wrap.innerHTML = `<h3>Alterações aguardando (${data.length})</h3>
+    <p class="hint">A versão aprovada continua no ar até você decidir.</p>` +
+    data.map(c => {
+      const keys = Object.keys(CHANGE_LABELS).filter(k => JSON.stringify(c.payload[k] ?? null) !== JSON.stringify(c.previous[k] ?? null));
+      return `<div class="change" data-id="${text(c.producer_id)}">
+        <div class="changeHead"><strong>${text(c.name)}</strong><span>${text(c.owner_email || '')} · ${dateText(c.submitted_at)}</span></div>
+        <table class="grid changeGrid"><thead><tr><th></th><th>No ar</th><th>Nova versão</th></tr></thead><tbody>
+          ${keys.map(k => `<tr><td>${text(CHANGE_LABELS[k])}</td><td>${changeValue(k, c.previous[k])}</td><td>${changeValue(k, c.payload[k])}</td></tr>`).join('')}
+        </tbody></table>
+        <div class="changeActions">
+          <button class="btn primary approveChange" type="button">Aprovar alteração</button>
+          <button class="btn danger rejectChange" type="button">Recusar</button>
+        </div>
+      </div>`;
+    }).join('');
+  box.appendChild(wrap);
+  wrap.querySelectorAll('.change').forEach(el => {
+    const id = el.dataset.id;
+    el.querySelector('.approveChange').addEventListener('click', async () => {
+      const { error: e } = await db.rpc('admin_resolve_change', { p_producer: id, p_approve: true });
+      if (e) { alert('Não consegui aprovar: ' + e.message); return; }
+      loadQueue();
+    });
+    el.querySelector('.rejectChange').addEventListener('click', async () => {
+      const reason = prompt('Motivo para o produtor (opcional):') ?? null;
+      const { error: e } = await db.rpc('admin_resolve_change', { p_producer: id, p_approve: false, p_reason: reason || null });
+      if (e) { alert('Não consegui recusar: ' + e.message); return; }
+      loadQueue();
+    });
+  });
+}
+
+/** The versions of a listing (0058), newest first, each with "Restaurar". */
+async function paintHistory(row) {
+  const { data } = await db.rpc('admin_versions', { p_producer: row.id });
+  const body = $('editorBody');
+  const sec = document.createElement('section');
+  sec.className = 'section';
+  sec.innerHTML = `<h3>Histórico de versões</h3>` + (data?.length
+    ? data.map(v => `<div class="version" data-id="${text(v.id)}">
+        <div><strong>${dateText(v.created_at)}</strong> · ${text(v.snapshot?.name || '')}<br><span class="muted">${text((v.snapshot?.tagline || '').slice(0, 90))}</span></div>
+        <button class="btn ghost restoreVersion" type="button">Restaurar</button></div>`).join('')
+    : '<p class="muted">Nenhuma versão anterior.</p>');
+  body.appendChild(sec);
+  sec.querySelectorAll('.restoreVersion').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Restaurar esta versão? A versão atual também fica guardada no histórico.')) return;
+    const id = b.closest('.version').dataset.id;
+    const { error } = await db.rpc('admin_restore_version', { p_version: id });
+    if (error) { alert('Não consegui restaurar: ' + error.message); return; }
+    $('editor').close();
+    view === 'queue' ? loadQueue() : loadAll();
+  }));
+}
+
 async function loadQueue() {
   $('state').textContent = 'Carregando...';
   const { data, error } = await db.rpc('admin_producers', { p_status: 'pending', p_limit: 100 });
@@ -505,8 +583,9 @@ async function loadQueue() {
   $('state').textContent = '';
   const box = $('queue');
   box.innerHTML = '';
+  await paintPendingChanges(box);
   if (!queueRows.length) {
-    box.innerHTML = `<div class="panelBox"><div class="emptyNote"><strong>Fila vazia.</strong>Nenhum cadastro esperando revisão. Os novos aparecem aqui assim que o produtor envia.</div></div>`;
+    box.insertAdjacentHTML('beforeend', `<div class="panelBox"><div class="emptyNote"><strong>Fila vazia.</strong>Nenhum cadastro esperando revisão. Os novos aparecem aqui assim que o produtor envia.</div></div>`);
     return;
   }
   queueRows.forEach(r => box.appendChild(reviewCard(r)));
@@ -864,6 +943,7 @@ function openEditor(row) {
   };
   paintPhotos();
   paintPlan(row);
+  paintHistory(row);
 
   dlg.showModal();
   body.scrollTop = 0;

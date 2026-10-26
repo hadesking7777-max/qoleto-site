@@ -586,3 +586,14 @@ dialog::backdrop { background: var(--scrim); backdrop-filter: blur(2px); }
 /* 0057: automatic activation */
 .confirmAuto { margin-right: 8px; padding: 4px 10px; }
 a.pill { text-decoration: none; }
+
+/* 0058: changes waiting and versions */
+.changes { margin-bottom: 16px; }
+.changes h3 { margin: 0 0 4px; }
+.change { border-top: 1px solid var(--line); padding: 12px 0; }
+.changeHead { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+.changeHead span { color: var(--muted); font-size: 13px; }
+.changeGrid td { vertical-align: top; }
+.changeImg { width: 96px; height: 54px; object-fit: cover; border-radius: 6px; margin: 2px; }
+.changeActions { display: flex; gap: 8px; margin-top: 10px; }
+.version { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
