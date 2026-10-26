@@ -1101,7 +1101,7 @@ function alertCard(row) {
 
 /* ------------------------------------------------------------------ events */
 
-const EVENT_KINDS = { venda_direta: 'Venda direta', degustacao: 'Degustação', colheita: 'Colheita', visita_aberta: 'Visita aberta', oficina: 'Oficina prática' };
+const EVENT_KINDS = { venda_direta: 'Venda direta', degustacao: 'Degustação', colheita: 'Colheita', visita_aberta: 'Visita aberta', oficina: 'Oficina prática', envio_encomenda: 'Envio / Encomenda' };
 let eventWhen = 'upcoming';
 
 document.querySelectorAll('#eventSeg button').forEach(b => b.addEventListener('click', () => {
