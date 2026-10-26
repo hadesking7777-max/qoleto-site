@@ -11,6 +11,9 @@
   (function () {
     var m = location.pathname.match(/^\/p\/([0-9a-fA-F]{6,32})\/?$/);
     if (m) location.replace('/p/?c=' + m[1].toLowerCase());
+    // the QR Code of an event (0059): qoleto.com/e/<token>
+    var e = location.pathname.match(/^\/e\/([0-9a-fA-F]{12,32})\/?$/);
+    if (e) location.replace('/e/?t=' + e[1].toLowerCase());
   })();
 </script>
 </head>
