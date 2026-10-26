@@ -582,3 +582,7 @@ dialog::backdrop { background: var(--scrim); backdrop-filter: blur(2px); }
 @media (max-width: 720px) {
   .planGrant, .teamForm { grid-template-columns: 1fr; }
 }
+
+/* 0057: automatic activation */
+.confirmAuto { margin-right: 8px; padding: 4px 10px; }
+a.pill { text-decoration: none; }

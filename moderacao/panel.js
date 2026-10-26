@@ -115,6 +115,20 @@ function signals(r, short = false) {
   if (flagged) out.push(`<span class="pill warn">${flagged === 1 ? '1 foto' : flagged + ' fotos'} para conferir</span>`);
   if (short && r.tier === 'premium') out.push('<span class="pill brass plain">Qoleto+</span>');
   if (r.prevalidated) out.push('<span class="pill good">Encontrado no Google</span>');
+  // automatic activation (0057): what went live by itself, and the checks behind it
+  const act = r.act;
+  if (act) {
+    if (act.auto_approved && !act.auto_checked) out.push('<span class="pill brass">Ativado automaticamente</span>');
+    if (act.google_business) out.push(`<span class="pill warn" title="${text(act.google_business)}">Empresa no Google${short ? '' : ': ' + text(act.google_business)}</span>`);
+    const v = act.validation;
+    if (v && v.ok) {
+      out.push(short ? '<span class="pill good">Foto no local</span>'
+        : `<a class="pill good" href="${attr(v.photo || '#')}" target="_blank" rel="noopener">Foto no local (${text(String(v.distance_m))} m)</a>`);
+    } else if (r.moderation_status === 'pending') {
+      out.push(v ? `<span class="pill warn">Foto no local a ${text(String(v.distance_m))} m do pino</span>` : '<span class="pill">Sem foto no local</span>');
+    }
+    if ((act.blockers || []).includes('shipping_only')) out.push('<span class="pill warn">Só envio</span>');
+  }
   if (r.admin_paused) out.push('<span class="pill">Pausado pela moderação</span>');
   else if (r.owner_paused) out.push('<span class="pill">Pausado pelo produtor</span>');
   return out.join('');
@@ -475,11 +489,19 @@ async function loadNextAlerts() {
 
 let focusAfterLoad = null;
 
+/** The activation checks of each row (0057), fetched in one call. */
+async function withActivation(rows) {
+  if (!rows.length) return rows;
+  const { data } = await db.rpc('admin_activation_info', { p_ids: rows.map(r => r.id) });
+  const byId = new Map((data ?? []).map(a => [a.id, a]));
+  return rows.map(r => ({ ...r, act: byId.get(r.id) || null }));
+}
+
 async function loadQueue() {
   $('state').textContent = 'Carregando...';
   const { data, error } = await db.rpc('admin_producers', { p_status: 'pending', p_limit: 100 });
   if (error) { $('state').textContent = 'Não consegui carregar a fila: ' + error.message; return; }
-  queueRows = data ?? [];
+  queueRows = await withActivation(data ?? []);
   $('state').textContent = '';
   const box = $('queue');
   box.innerHTML = '';
@@ -635,7 +657,7 @@ async function loadAll() {
     p_offset: page * PAGE,
   });
   if (error) { $('state').textContent = 'Não consegui carregar: ' + error.message; return; }
-  rowsOnScreen = data ?? [];
+  rowsOnScreen = await withActivation(data ?? []);
   selected.clear();
   paintBulk();
 
@@ -664,7 +686,7 @@ async function loadAll() {
           <td data-l="Cidade">${text(r.city || '-')}</td>
           <td data-l="Situação">${statusPill(r)}</td>
           <td><div class="cellFlags">${signals(r, true)}</div></td>
-          <td class="editCell"><button class="iconBtn edit" type="button" aria-label="Editar ${text(r.name)}">${icon('edit')}</button></td>
+          <td class="editCell">${r.act?.auto_approved && !r.act.auto_checked ? `<button class="btn ghost small confirmAuto" type="button">Conferido</button>` : ''}<button class="iconBtn edit" type="button" aria-label="Editar ${text(r.name)}">${icon('edit')}</button></td>
         </tr>`;
       }).join('')}</tbody>
     </table></div>`;
@@ -684,6 +706,13 @@ async function loadAll() {
       if (e.target.checked) selected.add(row.id); else selected.delete(row.id);
       tr.classList.toggle('picked', e.target.checked);
       paintBulk();
+    });
+    // "Conferido": a moderator looked at a listing that went live by itself
+    tr.querySelector('.confirmAuto')?.addEventListener('click', async e => {
+      e.stopPropagation();
+      const { error } = await db.rpc('admin_confirm_auto', { p_id: row.id });
+      if (error) { alert('Não consegui marcar: ' + error.message); return; }
+      loadAll();
     });
     // the whole row opens the editor, except the tick box that selects it
     tr.addEventListener('click', e => { if (!e.target.closest('.pickCell')) openEditor(row); });
