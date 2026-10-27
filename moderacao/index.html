@@ -105,6 +105,7 @@
       <button class="navItem" data-view="all"><svg><use href="#i-list"/></svg>Todos os cadastros</button>
       <button class="navItem" data-view="alerts"><svg><use href="#i-bell"/></svg>Alertas<span class="navN" data-count="alerts"></span></button>
       <button class="navItem" data-view="events"><svg><use href="#i-calendar"/></svg>Eventos</button>
+      <button class="navItem" data-view="requests"><svg><use href="#i-inbox"/></svg>Pedidos de produto</button>
       <button class="navItem ownerOnly" data-view="team" hidden><svg><use href="#i-team"/></svg>Equipe</button>
     </nav>
     <p id="demoBadge" class="demoBadge" hidden>Demonstração</p>
@@ -200,6 +201,15 @@
         <button data-when="past" aria-pressed="false" type="button">Já aconteceram</button>
       </div>
       <div class="alerts" id="eventList"></div>
+    </section>
+
+    <!-- "Nao encontrou o seu produto?" (0064) -->
+    <section id="view-requests" class="view" hidden>
+      <div class="seg" id="requestSeg" role="group" aria-label="Situacao">
+        <button data-req="pending" aria-pressed="true" type="button">Aguardando</button>
+        <button data-req="answered" aria-pressed="false" type="button">Respondidos</button>
+      </div>
+      <div class="alerts" id="requestList"></div>
     </section>
 
     <!-- equipe (so o admin_owner) -->

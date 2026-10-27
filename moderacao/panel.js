@@ -46,6 +46,7 @@ const VIEWS = {
   all: { hash: 'todos', eyebrow: 'Catálogo', title: 'Todos os cadastros', sub: 'Busque, filtre e ajuste vários cadastros de uma vez.' },
   alerts: { hash: 'alertas', eyebrow: 'Automações', title: 'Alertas', sub: 'O que as verificações automáticas pediram para uma pessoa olhar.' },
   events: { hash: 'eventos', eyebrow: 'Agenda', title: 'Eventos', sub: 'Feiras, degustações, colheitas e portas abertas que os produtores anunciaram, com o formato e o plano de cada um.' },
+  requests: { hash: 'pedidos', eyebrow: 'Cadastro', title: 'Pedidos de produto', sub: 'Quem não encontrou o seu produto ou atividade no cadastro pediu para incluir. Responda pelo e-mail da pessoa e marque como respondido.' },
   team: { hash: 'equipe', eyebrow: 'Acesso', title: 'Equipe', sub: 'Quem modera o Qoleto e em qual nível.' },
 };
 
@@ -341,6 +342,7 @@ async function load() {
   if (view === 'queue') return loadQueue();
   if (view === 'all') return loadAll();
   if (view === 'events') return loadEvents();
+  if (view === 'requests') return loadRequests();
   if (view === 'team') return loadTeam();
   return loadAlerts();
 }
@@ -1119,6 +1121,55 @@ const whenText = (a, b) => {
     ? `${day(d1)} · ${hm(d1)} - ${hm(d2)}`
     : `${day(d1)} ${hm(d1)} - ${day(d2)} ${hm(d2)}`;
 };
+
+// "Não encontrou o seu produto?" (0064): what was asked, by whom, with the photo
+let requestStatus = 'pending';
+document.querySelectorAll('#requestSeg [data-req]').forEach(b => b.addEventListener('click', () => {
+  requestStatus = b.dataset.req;
+  document.querySelectorAll('#requestSeg [data-req]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  loadRequests();
+}));
+
+async function loadRequests() {
+  $('state').textContent = 'Carregando...';
+  const { data, error } = await db.rpc('admin_product_requests', { p_status: requestStatus });
+  if (error) { $('state').textContent = 'Não consegui carregar os pedidos: ' + error.message; return; }
+  $('state').textContent = '';
+  const box = $('requestList');
+  const rows = data ?? [];
+  box.innerHTML = rows.length ? '' : `<div class="panelBox"><div class="emptyNote"><strong>${requestStatus === 'pending' ? 'Nenhum pedido aguardando.' : 'Nenhum pedido respondido ainda.'}</strong>Os pedidos feitos no passo 1 do cadastro aparecem aqui.</div></div>`;
+  rows.forEach(r => box.appendChild(requestCard(r)));
+}
+
+function requestCard(row) {
+  const el = document.createElement('article');
+  el.className = 'alertCard';
+  const photo = row.photo_url && /^https:\/\//.test(row.photo_url)
+    ? `<a href="${text(row.photo_url)}" target="_blank" rel="noopener"><img src="${text(row.photo_url)}" alt="" style="width:120px;height:120px;object-fit:cover;border-radius:10px"></a>`
+    : '';
+  el.innerHTML = `
+    <span class="alertIcon" style="background:var(--primary-soft);color:var(--primary)">${icon('inbox')}</span>
+    <div class="reviewBody" style="padding:0">
+      <div class="reviewHead">
+        <h3>${text(row.name)}</h3>
+        <p class="meta"><span>${icon('clock')} ${text(ago(row.created_at))}</span></p>
+      </div>
+      ${row.description ? `<p class="desc">${text(row.description)}</p>` : ''}
+      ${photo}
+      <dl class="facts">
+        <div><dt>E-mail</dt><dd>${text(row.email || '-')}</dd></div>
+        <div><dt>Idioma</dt><dd>${text(row.lang || '-')}</dd></div>
+      </dl>
+      ${row.status === 'pending' ? '<div class="reviewActions"><button class="btn primary done" type="button">Marcar como respondido</button></div>' : ''}
+    </div>`;
+  el.querySelector('.done')?.addEventListener('click', async () => {
+    const { error } = await db.rpc('admin_answer_product_request', { p_id: row.id });
+    if (error) { toast('Não consegui marcar: ' + error.message, 'bad'); return; }
+    toast('Pedido marcado como respondido.');
+    loadRequests();
+  });
+  return el;
+}
 
 async function loadEvents() {
   $('state').textContent = 'Carregando...';
