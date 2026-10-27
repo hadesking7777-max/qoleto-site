@@ -25,6 +25,10 @@
   .who { font: 600 20px 'Plus Jakarta Sans', sans-serif; margin: 0; }
   .when { font-size: 14px; margin: 0; color: #3C4A43; }
   .url { font-size: 12px; color: #5B665F; word-break: break-all; margin-top: auto; }
+  .photo { width: 100%; aspect-ratio: 16 / 9; border-radius: 4mm; background: #DCD8CB center/cover no-repeat; }
+  .chip { font: 600 13px 'Plus Jakarta Sans', sans-serif; color: var(--green); background: #E3EFE7; border-radius: 999px; padding: 5px 12px; }
+  .sheet.invite { gap: 4mm; padding-top: 10mm; }
+  .sheet.invite #qr svg { width: 62mm; height: 62mm; }
   .gone { text-align: center; padding: 40px 16px; font-size: 16px; }
   @media print {
     @page { size: A5; margin: 0; }
@@ -42,11 +46,11 @@
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
   const db = createClient('https://dshqzppwbzdeumwlkpfi.supabase.co', 'sb_publishable_FcuGYckk4FyG9kR9e5iBCQ_NGY_O0Fg');
   const T = {
-    pt: { call: 'Avalie a sua visita', subEvent: 'Aponte a câmera do celular para o código e avalie na hora, durante o evento.', subPlace: 'Aponte a câmera do celular para o código e conheça a nossa vitrine no Qoleto.', print: 'Imprimir', gone: 'Código não encontrado.' },
-    en: { call: 'Review your visit', subEvent: 'Point your phone camera at the code and review right away, during the event.', subPlace: 'Point your phone camera at the code and see our showcase on Qoleto.', print: 'Print', gone: 'Code not found.' },
-    es: { call: 'Valora tu visita', subEvent: 'Apunta la cámara del teléfono al código y valora al momento, durante el evento.', subPlace: 'Apunta la cámara del teléfono al código y conoce nuestra vitrina en Qoleto.', print: 'Imprimir', gone: 'Código no encontrado.' },
-    fr: { call: 'Donnez votre avis', subEvent: "Visez le code avec l'appareil photo et donnez votre avis tout de suite, pendant l'événement.", subPlace: "Visez le code avec l'appareil photo et découvrez notre vitrine sur Qoleto.", print: 'Imprimer', gone: 'Code introuvable.' },
-    it: { call: 'Recensisci la tua visita', subEvent: "Inquadra il codice con la fotocamera e recensisci subito, durante l'evento.", subPlace: 'Inquadra il codice con la fotocamera e scopri la nostra vetrina su Qoleto.', print: 'Stampa', gone: 'Codice non trovato.' },
+    pt: { call: 'Avalie a sua visita', subEvent: 'Aponte a câmera do celular para ver o evento no Qoleto. Durante o evento, o mesmo código abre a sua avaliação.', place: 'Local', kinds: { feira: 'Feira', portas_abertas: 'Portas abertas / Venda direta', degustacao: 'Degustação', colheita: 'Colheita', oficina: 'Curso / Oficina', envio_encomenda: 'Envio / Encomenda' }, subPlace: 'Aponte a câmera do celular para o código e conheça a nossa vitrine no Qoleto.', print: 'Imprimir', gone: 'Código não encontrado.' },
+    en: { call: 'Review your visit', subEvent: 'Point your phone camera at the code to see the event on Qoleto. During the event, the same code opens your review.', place: 'Location', kinds: { feira: 'Fair', portas_abertas: 'Open doors / Direct sale', degustacao: 'Tasting', colheita: 'Harvest', oficina: 'Course / Workshop', envio_encomenda: 'Shipping / Orders' }, subPlace: 'Point your phone camera at the code and see our showcase on Qoleto.', print: 'Print', gone: 'Code not found.' },
+    es: { call: 'Valora tu visita', subEvent: 'Apunta la cámara del teléfono al código para ver el evento en Qoleto. Durante el evento, el mismo código abre tu valoración.', place: 'Lugar', kinds: { feira: 'Feria', portas_abertas: 'Puertas abiertas / Venta directa', degustacao: 'Degustación', colheita: 'Cosecha', oficina: 'Curso / Taller', envio_encomenda: 'Envío / Encargo' }, subPlace: 'Apunta la cámara del teléfono al código y conoce nuestra vitrina en Qoleto.', print: 'Imprimir', gone: 'Código no encontrado.' },
+    fr: { call: 'Donnez votre avis', subEvent: "Visez le code avec l'appareil photo pour voir l'événement sur Qoleto. Pendant l'événement, le même code ouvre votre avis.", place: 'Lieu', kinds: { feira: 'Marché', portas_abertas: 'Portes ouvertes / Vente directe', degustacao: 'Dégustation', colheita: 'Récolte', oficina: 'Cours / Atelier', envio_encomenda: 'Envoi / Commande' }, subPlace: "Visez le code avec l'appareil photo et découvrez notre vitrine sur Qoleto.", print: 'Imprimer', gone: 'Code introuvable.' },
+    it: { call: 'Recensisci la tua visita', subEvent: "Inquadra il codice con la fotocamera per vedere l'evento su Qoleto. Durante l'evento, lo stesso codice apre la tua recensione.", place: 'Luogo', kinds: { feira: 'Fiera', portas_abertas: 'Porte aperte / Vendita diretta', degustacao: 'Degustazione', colheita: 'Raccolta', oficina: 'Corso / Laboratorio', envio_encomenda: 'Spedizione / Ordini' }, subPlace: 'Inquadra il codice con la fotocamera e scopri la nostra vetrina su Qoleto.', print: 'Stampa', gone: 'Codice non trovato.' },
   };
   const lang = (navigator.language || 'pt').slice(0, 2).toLowerCase();
   const t = T[lang] || T.pt;
@@ -67,7 +71,7 @@
 
   async function main() {
     const root = document.getElementById('root');
-    let url, who = '', when = '', sub;
+    let url, who = '', when = '', sub, ev0 = null;
     if (ev) {
       const { data: e } = await db.rpc('event_by_token', { p_token: ev });
       if (!e) { root.innerHTML = `<p class="gone">${t.gone}</p>`; return; }
@@ -76,6 +80,7 @@
       const d = x => new Date(x).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
       when = `${e.title} · ${d(e.starts_at)} - ${d(e.ends_at)}`;
       sub = t.subEvent;
+      ev0 = e;
     } else if (pc) {
       const { data: p } = await db.rpc('producer_by_code', { p_code: pc });
       if (!p) { root.innerHTML = `<p class="gone">${t.gone}</p>`; return; }
@@ -83,6 +88,25 @@
       who = p.name;
       sub = t.subPlace;
     } else { root.innerHTML = `<p class="gone">${t.gone}</p>`; return; }
+    // an event: the Capa-Convite (27/10)
+    if (ev0) {
+      const d = x => new Date(x).toLocaleString(locale, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const photo = ev0.banner_url && /^https:\/\//.test(ev0.banner_url)
+        ? `<div class="photo" style="background-image:url(&quot;${esc(encodeURI(ev0.banner_url))}&quot;)"></div>` : '';
+      const where = ev0.place_address || ev0.city;
+      root.innerHTML = `<div class="sheet invite">
+        ${photo}
+        ${ev0.kind && t.kinds[ev0.kind] ? `<span class="chip">${esc(t.kinds[ev0.kind])}</span>` : ''}
+        <p class="call">${esc(ev0.title)}</p>
+        <p class="who">${esc(who)}</p>
+        <p class="when">${esc(d(ev0.starts_at) + ' - ' + d(ev0.ends_at))}</p>
+        ${where ? `<p class="when">${esc(t.place + ': ' + where)}</p>` : ''}
+        <div id="qr">${code(url)}</div>
+        <p class="sub">${sub}</p>
+        <div class="brand">Qoleto</div>
+      </div>`;
+      return;
+    }
     root.innerHTML = `<div class="sheet">
       <div class="brand">Qoleto</div>
       <p class="call">${t.call}</p>
